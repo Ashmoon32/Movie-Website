@@ -1,55 +1,62 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-let movies = [
-    {id: 1, title: 'Inception, year: 2010', rating: 8.8 },
-    {id: 2, title: 'The Dark Knight', year: 2008, rating: 9.0 },
-    {id: 3, title: 'Interstellar', year: 2014, rating: 8.6 }
-];
+// Routes
+app.use('/api/movies', require('./routes/movies'));
+app.use('/api/favorites', require('./routes/favorites'));
 
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Movie API is running!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Default route
 app.get('/', (req, res) => {
-    res.json({message: "Movie API is working!"});
+  res.json({
+    message: 'Welcome to Movie API',
+    endpoints: {
+      movies: '/api/movies',
+      favorites: '/api/favorites',
+      health: '/api/health'
+    },
+    documentation: 'See README.md for API documentation'
+  });
 });
 
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Error:', error);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? error.message : undefined
+  });
+});
+
+// Start server
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
-
-app.get('/movies', (req, res) => {
-    res.json(movies);
-});
-
-app.get('/movies/:id' (req, res) => {
-    const id = parseInt(req.params.id);
-    const movie = movies.find(m =>.id === id);
-
-    if(!movie) {
-        return res.status(404).json({ message: 'Movie not found' });
-    }
-
-    res.json(movie);
-});
-
-app.post('/movies', (req, res) => {
-    const { title, year, rating } => req.body;
-
-    if(!title || !year) {
-        return res.status(400).json({ message: 'Title and year are required' });
-    }
-
-    const newMovie = {
-        id: movies.lenght + 1,
-        title, 
-        year: parseInt(year),
-        rating: rating || 0
-    };
-
-    movies.push(newMovie);
-    res.status(201).json(newMovie);
+  console.log(`🎬 Movie API Server running on port ${PORT}`);
+  console.log(`📍 Local: http://localhost:${PORT}`);
+  console.log(`🛠️  Environment: ${process.env.NODE_ENV || 'development'}`);
 });
